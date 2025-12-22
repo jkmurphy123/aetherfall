@@ -1,0 +1,17 @@
+#copy up files
+cd /home/ubuntu/projects/aetherfall
+git pull
+
+#setup
+cd /home/ubuntu/projects/aetherfall
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+
+#run
+cd G:\PythonProjects\TitanGame
+source .venv/bin/activate
+
+
+python main.py
