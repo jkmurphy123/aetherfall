@@ -35,7 +35,6 @@ def main() -> int:
 
     while running:
         dt_s = clock.tick(60) / 1000.0
-        sim_accum += dt_s
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
