@@ -1,0 +1,45 @@
+{
+    "version": 1,
+    "resources": [
+        {
+            "id": "wood",
+            "name": "Wood",
+            "weight": 1.0
+        },
+        {
+            "id": "iron_ore",
+            "name": "Iron Ore",
+            "weight": 2.5
+        },
+        {
+            "id": "carbon",
+            "name": "Carbon",
+            "weight": 1.2
+        },
+        {
+            "id": "steel",
+            "name": "Steel",
+            "weight": 3.0
+        },
+        {
+            "id": "food_rations",
+            "name": "Food Rations",
+            "weight": 0.5
+        },
+        {
+            "id": "copper_ore",
+            "name": "Copper Ore",
+            "weight": 2.0
+        },
+        {
+            "id": "copper_wire",
+            "name": "Copper Wire",
+            "weight": 0.4
+        },
+        {
+            "id": "circuit_board",
+            "name": "Circuit Board",
+            "weight": 0.6
+        }
+    ]
+}

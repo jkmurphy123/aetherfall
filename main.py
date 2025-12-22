@@ -4,6 +4,7 @@ import pygame
 import pygame_gui
 
 from model import make_demo_state, Simulation
+from config_loaders import load_resources, load_recipes, load_units
 from commands import CommandBus, install_default_handlers, Command
 from ui import UI, Layout
 
@@ -17,13 +18,16 @@ def main() -> int:
 
     manager = pygame_gui.UIManager(layout.screen_size)
 
-    state = make_demo_state()
+    catalog = load_resources("data/resources.json")
+    recipes = load_recipes("data/recipes.json", catalog)
+    state = load_units("data/units.json", recipes, catalog)
+
     sim = Simulation(state)
 
     bus = CommandBus(state)
     install_default_handlers(bus)
 
-    ui = UI(screen=screen, manager=manager, layout=layout, state=state, bus=bus)
+    ui = UI(screen=screen, manager=manager, layout=layout, state=state, bus=bus, resources=catalog)
 
     clock = pygame.time.Clock()
     running = True

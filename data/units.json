@@ -1,0 +1,75 @@
+{
+    "version": 1,
+    "units": [
+        {
+            "id": "central_supply",
+            "name": "Central Supply",
+            "kind": "CentralSupply",
+            "pos": [
+                980,
+                90
+            ],
+            "input_id": null,
+            "output_id": null,
+            "inventory": {
+                "food_rations": 52,
+                "steel": 10,
+                "copper_wire": 20
+            },
+            "recipe_id": null,
+            "status": "Running",
+            "notes": "Player inventory."
+        },
+        {
+            "id": "wood_pile",
+            "name": "Wood Pile (North Copse)",
+            "kind": "ResourcePile",
+            "pos": [
+                220,
+                160
+            ],
+            "input_id": null,
+            "output_id": "drone_01",
+            "inventory": {
+                "wood": 20
+            },
+            "recipe_id": "transfer_wood",
+            "status": "Running",
+            "notes": "A conveniently game-shaped pile."
+        },
+        {
+            "id": "drone_01",
+            "name": "Drone-01",
+            "kind": "Drone",
+            "pos": [
+                360,
+                240
+            ],
+            "input_id": "wood_pile",
+            "output_id": "central_supply",
+            "inventory": {},
+            "recipe_id": "transfer_any",
+            "status": "Running",
+            "notes": "Basic hauler drone."
+        },
+        {
+            "id": "smelter",
+            "name": "Red Dune Smelter",
+            "kind": "Factory",
+            "pos": [
+                520,
+                310
+            ],
+            "input_id": null,
+            "output_id": "central_supply",
+            "inventory": {
+                "iron_ore": 12,
+                "carbon": 4
+            },
+            "recipe_id": "smelt_steel",
+            "status": "Running",
+            "notes": "Runs hot. Smells like progress."
+        }
+    ],
+    "selected_unit_id": "drone_01"
+}

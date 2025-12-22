@@ -45,12 +45,13 @@ class Layout:
 
 class UI:
     def __init__(self, screen: pygame.Surface, manager: pygame_gui.UIManager, layout: Layout,
-                 state: GameState, bus: CommandBus):
+                 state: GameState, bus: CommandBus, resources):
         self.screen = screen
         self.manager = manager
         self.layout = layout
         self.state = state
         self.bus = bus
+        self.resources = resources
 
         # ---- menu bar ----
         self.menu_panel = UIPanel(relative_rect=self.layout.rect_menu(), manager=self.manager)
