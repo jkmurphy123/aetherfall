@@ -53,7 +53,7 @@ class UI:
         self.bus = bus
 
         # ---- menu bar ----
-        self.menu_panel = UIPanel(relative_rect=self.layout.rect_menu(), starting_layer_height=1, manager=self.manager)
+        self.menu_panel = UIPanel(relative_rect=self.layout.rect_menu(), manager=self.manager)
         self.btn_pause = UIButton(pygame.Rect(8, 8, 90, 28), "Pause", manager=self.manager, container=self.menu_panel)
         self.btn_resume = UIButton(pygame.Rect(106, 8, 90, 28), "Resume", manager=self.manager, container=self.menu_panel)
         self.btn_focus = UIButton(pygame.Rect(204, 8, 130, 28), "Focus Selected", manager=self.manager, container=self.menu_panel)
@@ -61,7 +61,7 @@ class UI:
         self.lbl_status = UILabel(pygame.Rect(350, 8, 600, 28), "", manager=self.manager, container=self.menu_panel)
 
         # ---- left: assets ----
-        self.left_panel = UIPanel(self.layout.rect_left(), starting_layer_height=1, manager=self.manager)
+        self.left_panel = UIPanel(self.layout.rect_left(), manager=self.manager)
         UILabel(pygame.Rect(8, 8, 220, 24), "Assets", manager=self.manager, container=self.left_panel)
         self.asset_search = UITextEntryLine(pygame.Rect(8, 36, self.layout.left_w - 16, 28), manager=self.manager, container=self.left_panel)
         self.asset_list = UISelectionList(
@@ -72,7 +72,7 @@ class UI:
         )
 
         # ---- right: inspector ----
-        self.right_panel = UIPanel(self.layout.rect_right(), starting_layer_height=1, manager=self.manager)
+        self.right_panel = UIPanel(self.layout.rect_right(), manager=self.manager)
         UILabel(pygame.Rect(8, 8, 220, 24), "Inspector", manager=self.manager, container=self.right_panel)
         self.inspect_box = UITextBox(
             html_text="Select something on the map…",
@@ -82,7 +82,7 @@ class UI:
         )
 
         # ---- bottom: event log ----
-        self.bottom_panel = UIPanel(self.layout.rect_bottom(), starting_layer_height=1, manager=self.manager)
+        self.bottom_panel = UIPanel(self.layout.rect_bottom(), manager=self.manager)
         UILabel(pygame.Rect(8, 8, 220, 24), "Event Log", manager=self.manager, container=self.bottom_panel)
         self.log_box = UITextBox(
             html_text="",
