@@ -29,13 +29,13 @@ def main() -> int:
     projects = load_tasks("data/tasks.json")
     install_tasks_into_state(state, projects)
 
-    pm = ProjectManager(state)
-    install_project_manager_handlers(bus, pm)
-
     sim = Simulation(state)
 
     bus = CommandBus(state)
     install_default_handlers(bus)
+
+    pm = ProjectManager(state)
+    install_project_manager_handlers(bus, pm)
 
     ui = UI(screen=screen, manager=manager, layout=layout, state=state, bus=bus, resources=catalog)
 
