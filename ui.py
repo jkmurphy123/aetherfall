@@ -62,7 +62,7 @@ class UI:
 
         # ---- left: assets ----
         self.left_panel = UIPanel(self.layout.rect_left(), manager=self.manager)
-        UILabel(pygame.Rect(8, 8, 220, 24), "Assets (Global)", manager=self.manager, container=self.left_panel)
+        UILabel(pygame.Rect(8, 8, 220, 24), "Processing Units", manager=self.manager, container=self.left_panel)
         self.asset_search = UITextEntryLine(pygame.Rect(8, 36, self.layout.left_w - 16, 28), manager=self.manager, container=self.left_panel)
         self.asset_list = UISelectionList(
             pygame.Rect(8, 70, self.layout.left_w - 16, self.layout.rect_left().height - 78),
@@ -70,6 +70,10 @@ class UI:
             manager=self.manager,
             container=self.left_panel
         )
+
+        # ---- assets tree state ----
+        self._expanded_units = set()           # unit_ids currently expanded
+        self._asset_row_map = {}               # display_string -> metadata dict
 
         # ---- right: inspector ----
         self.right_panel = UIPanel(self.layout.rect_right(), manager=self.manager)
@@ -106,6 +110,32 @@ class UI:
 
         # initial populate
         self.refresh_all()
+
+    def _handle_assets_click(self, row_text: str) -> None:
+        meta = self._asset_row_map.get(row_text)
+        if not meta:
+            return
+
+        if meta["type"] == "unit":
+            unit_id = meta["unit_id"]
+            if meta.get("toggle_expand", False):
+                # expand/collapse
+                if unit_id in self._expanded_units:
+                    self._expanded_units.remove(unit_id)
+                else:
+                    self._expanded_units.add(unit_id)
+                self.refresh_assets()
+                return
+
+            # normal unit click = select unit (same as map)
+            self.bus.dispatch(Command("select_unit", {"unit_id": unit_id}))
+            return
+
+        # resource line clicked: for now do nothing (later: show tooltip, pin, etc.)
+        if meta["type"] == "resource":
+            # Example future: selecting resource could filter tasks/recipes
+            return
+
 
     # ---------- rendering ----------
     def draw_map(self) -> None:
@@ -215,6 +245,23 @@ class UI:
             if event.ui_element == self.asset_search:
                 self.refresh_assets()
 
+        elif event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
+            if event.ui_element == self.asset_list:
+                self._handle_assets_click(event.text)
+
+        elif event.type == pygame_gui.UI_SELECTION_LIST_DOUBLE_CLICKED_SELECTION:
+            if event.ui_element == self.asset_list:
+                meta = self._asset_row_map.get(event.text)
+                if meta and meta["type"] == "unit":
+                    unit_id = meta["unit_id"]
+                    if unit_id in self._expanded_units:
+                        self._expanded_units.remove(unit_id)
+                    else:
+                        self._expanded_units.add(unit_id)
+                    self.refresh_assets()
+
+
+
     def _apply_zoom(self, factor: float, pivot: Tuple[int, int]) -> None:
         # zoom around a pivot point so it feels anchored
         old_zoom = self._zoom
@@ -283,14 +330,55 @@ class UI:
     def refresh_assets(self) -> None:
         filt = self.asset_search.get_text().strip().lower()
 
-        summary = self.state.all_inventories_summary()
-        items = []
-        for name, qty in sorted(summary.items(), key=lambda kv: kv[0].lower()):
-            if filt and filt not in name.lower():
-                continue
-            items.append(f"{name}  [{qty}]")
+        rows = []
+        self._asset_row_map = {}
 
-        self.asset_list.set_item_list(items)
+        # Sort units by name for stable display
+        units = sorted(self.state.units.values(), key=lambda u: u.name.lower())
+
+        for u in units:
+            # filter: if filter matches unit name OR any inventory item
+            unit_match = (not filt) or (filt in u.name.lower())
+
+            inv_items = sorted(u.inventory.items(), key=lambda kv: kv[0].lower())
+            inv_match = False
+            if filt and not unit_match:
+                for item, qty in inv_items:
+                    if filt in item.lower():
+                        inv_match = True
+                        break
+
+            if filt and not (unit_match or inv_match):
+                continue
+
+            expanded = (u.id in self._expanded_units)
+            tri = "▼" if expanded else "▶"
+
+            unit_line = f"{tri}  {u.name}  ({u.kind})"
+            rows.append(unit_line)
+            self._asset_row_map[unit_line] = {"type": "unit", "unit_id": u.id}
+
+            if expanded:
+                if inv_items:
+                    for item, qty in inv_items:
+                        # resource child line
+                        child = f"    • {item}: {qty}"
+                        # apply filter to children too (if filter is active and didn't match unit name)
+                        if filt and (not unit_match) and (filt not in item.lower()):
+                            continue
+                        rows.append(child)
+                        self._asset_row_map[child] = {
+                            "type": "resource",
+                            "unit_id": u.id,
+                            "resource": item
+                        }
+                else:
+                    child = "    • (empty)"
+                    rows.append(child)
+                    self._asset_row_map[child] = {"type": "resource", "unit_id": u.id, "resource": None}
+
+        self.asset_list.set_item_list(rows)
+
 
     def refresh_inspector(self) -> None:
         u = self.state.get_selected_unit()

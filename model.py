@@ -106,14 +106,20 @@ def make_demo_state() -> GameState:
     s = GameState()
 
     # A special "player stockpile" unit (your control panel warehouse)
-    s.units["stockpile"] = ProcessingUnit(
-        id="stockpile",
-        name="Argonaut Stockpile",
-        kind="Stockpile",
-        pos=(820, 120),
-        inventory={"Food Rations": 52, "Steel": 10},
+    s.units["central_supply"] = ProcessingUnit(
+        id="central_supply",
+        name="Central Supply",
+        kind="CentralSupply",
+        pos=(980, 90),              # map position (can be wherever)
+        input_id=None,
+        output_id=None,
+        inventory={
+            "Food Rations": 52,
+            "Steel": 10,
+            "Copper Wire": 20,
+        },
         recipe=None,
-        notes="Central storage at the control complex."
+        notes="Player inventory. Everything ultimately ends up here (unless you forget)."
     )
 
     # A resource pile: null input; output will be set when a drone docks.
@@ -149,7 +155,7 @@ def make_demo_state() -> GameState:
         kind="Factory",
         pos=(520, 310),
         input_id=None,
-        output_id="stockpile",  # outputs to stockpile (conceptually)
+        output_id="central_supply",  # outputs to stockpile (conceptually)
         inventory={"Iron Ore": 12, "Carbon": 4},
         recipe=Recipe(
             name="Smelt Steel",
