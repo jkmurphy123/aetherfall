@@ -411,6 +411,7 @@ class UI:
         self.refresh_assets()
         self.refresh_inspector()
         self.refresh_log()
+        self.refresh_projects() 
 
     def refresh_status(self) -> None:
         paused = "PAUSED" if self.state.paused else "RUNNING"

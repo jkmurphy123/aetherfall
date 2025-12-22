@@ -38,6 +38,8 @@ def main() -> int:
         projects = load_tasks("data/tasks.json")
         install_tasks_into_state(state, projects)
 
+        print(f"Projects loaded: {len(state.projects)}")  #temp
+
     except Exception as e:
         print("FATAL: Failed to load configuration")
         print(e)
