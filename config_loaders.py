@@ -75,18 +75,15 @@ def load_recipes(path: str, catalog: ResourceCatalog) -> Dict[str, Recipe]:
             raise ValueError(f"Recipe {rid} references unknown transfer_resource id: {transfer_res}")
 
         out[rid] = Recipe(
+            id=rid,
             name=r.get("name", rid),
+            mode=r.get("mode", "transfer" if transfer_res is not None else "craft"),
             duration_turns=int(r.get("duration_turns", 1)),
+            power_required=int(r.get("power_required", 0)),
             inputs=inputs,
             outputs=outputs,
             transfer_resource=transfer_res,
         )
-
-        # Optional extra fields: store as attributes for later if you want
-        # (Python allows adding attributes dynamically, but you may prefer to
-        # extend the Recipe dataclass later.)
-        out[rid].power_required = int(r.get("power_required", 0))  # type: ignore[attr-defined]
-        out[rid].mode = mode or ("transfer" if r.get("transfer_resource", None) is not None else "craft")  # type: ignore[attr-defined]
 
     if not out:
         raise ValueError("recipes.json contained no recipes")
