@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "fonts": {
+        "default": {
+            "name": "dejavu",
+            "point_size": 14,
+            "path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        }
+    },
+    "colours": {
+        "dark_bg": "#0b0f14"
+    }
+}

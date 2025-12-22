@@ -23,7 +23,10 @@ def main() -> int:
     screen = pygame.display.set_mode(layout.screen_size)
     pygame.display.set_caption("Aetherfall — Logistics Console")
 
-    manager = pygame_gui.UIManager(layout.screen_size)
+    manager = pygame_gui.UIManager(
+        layout.screen_size,
+        theme_path="data/theme.json"
+    )
 
     clock = pygame.time.Clock()
 
