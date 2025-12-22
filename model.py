@@ -71,6 +71,10 @@ class ProcessingUnit:
 class GameState:
     units: Dict[str, ProcessingUnit] = field(default_factory=dict)
     selected_unit_id: Optional[str] = None
+
+    projects: List[Project] = field(default_factory=list)
+    selected_pm_item: Optional[str] = None  # e.g. "project:boot_sequence" / "goal:..." / "task:..."
+
     events: List[str] = field(default_factory=list)
 
     paused: bool = False
@@ -162,3 +166,35 @@ class GameState:
             u.inv_add(item, qty)
 
         s.log(f"{u.name}: crafted {', '.join([f'{v} {k}' for k, v in r.outputs.items()])}")
+
+    def recompute_project_status(self) -> None:
+        for p in self.projects:
+            for g in p.goals:
+                req_tasks = [t for t in g.tasks if t.required]
+                g.completed = (len(req_tasks) == 0) or all(t.completed for t in req_tasks)
+
+            req_goals = [g for g in p.goals if g.required]
+            p.completed = (len(req_goals) == 0) or all(g.completed for g in req_goals)
+            
+@dataclass
+class Task:
+    id: str
+    name: str
+    required: bool = True
+    completed: bool = False
+
+@dataclass
+class Goal:
+    id: str
+    name: str
+    required: bool = True
+    tasks: List[Task] = field(default_factory=list)
+    completed: bool = False  # derived
+
+@dataclass
+class Project:
+    id: str
+    name: str
+    required: bool = True
+    goals: List[Goal] = field(default_factory=list)
+    completed: bool = False  # derived

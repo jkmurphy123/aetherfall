@@ -1,0 +1,56 @@
+{
+    "version": 1,
+    "projects": [
+        {
+            "id": "boot_sequence",
+            "name": "Boot Sequence",
+            "required": true,
+            "goals": [
+                {
+                    "id": "establish_supply",
+                    "name": "Establish Supply",
+                    "required": true,
+                    "tasks": [
+                        {
+                            "id": "check_central",
+                            "name": "Verify Central Supply inventory",
+                            "required": true,
+                            "completed": false
+                        },
+                        {
+                            "id": "link_drone",
+                            "name": "Link Drone-01 output to Central Supply",
+                            "required": true,
+                            "completed": false
+                        },
+                        {
+                            "id": "optional_note",
+                            "name": "Write a smug log entry",
+                            "required": false,
+                            "completed": false
+                        }
+                    ]
+                },
+                {
+                    "id": "first_processing",
+                    "name": "First Processing",
+                    "required": true,
+                    "tasks": [
+                        {
+                            "id": "prime_smelter",
+                            "name": "Ensure Smelter has Iron Ore + Carbon",
+                            "required": true,
+                            "completed": false
+                        },
+                        {
+                            "id": "run_smelter",
+                            "name": "Produce 1 Steel",
+                            "required": true,
+                            "completed": false
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

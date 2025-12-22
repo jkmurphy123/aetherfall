@@ -18,6 +18,7 @@ class Layout:
     left_w: int = 320
     right_w: int = 340
     pad: int = 8
+    project_list_h: int = 170  # height of project panel area (same as bottom_h works too)
 
     def rect_menu(self) -> pygame.Rect:
         return pygame.Rect(0, 0, self.screen_size[0], self.menu_h)
@@ -41,6 +42,23 @@ class Layout:
         x = self.left_w
         w = self.screen_size[0] - self.left_w - self.right_w
         return pygame.Rect(x, y, w, h)
+
+    def rect_bottom_left(self) -> pygame.Rect:
+        # bottom-left half (event log)
+        w = self.screen_size[0] // 2
+        return pygame.Rect(0, self.screen_size[1] - self.bottom_h, w, self.bottom_h)
+
+    def rect_bottom_right(self) -> pygame.Rect:
+        # bottom-right half (project manager)
+        w = self.screen_size[0] - (self.screen_size[0] // 2)
+        x = self.screen_size[0] // 2
+        return pygame.Rect(x, self.screen_size[1] - self.bottom_h, w, self.bottom_h)
+
+    def rect_right_top(self) -> pygame.Rect:
+        # right column above bottom strip
+        y = self.menu_h
+        h = self.screen_size[1] - self.menu_h - self.bottom_h
+        return pygame.Rect(self.screen_size[0] - self.right_w, y, self.right_w, h)
 
 
 class UI:
@@ -77,7 +95,7 @@ class UI:
         self._asset_row_map = {}               # display_string -> metadata dict
 
         # ---- right: inspector ----
-        self.right_panel = UIPanel(self.layout.rect_right(), manager=self.manager)
+        self.right_panel = UIPanel(self.layout.rect_right_top(), manager=self.manager)
         UILabel(pygame.Rect(8, 8, 220, 24), "Inspector", manager=self.manager, container=self.right_panel)
         self.inspect_box = UITextBox(
             html_text="Select something on the map…",
@@ -86,15 +104,38 @@ class UI:
             container=self.right_panel
         )
 
-        # ---- bottom: event log ----
-        self.bottom_panel = UIPanel(self.layout.rect_bottom(), manager=self.manager)
-        UILabel(pygame.Rect(8, 8, 220, 24), "Event Log", manager=self.manager, container=self.bottom_panel)
+        # ---- bottom-left: event log ----
+        self.log_panel = UIPanel(self.layout.rect_bottom_left(), manager=self.manager)
+        UILabel(pygame.Rect(8, 8, 220, 24), "Event Log", manager=self.manager, container=self.log_panel)
         self.log_box = UITextBox(
             html_text="",
-            relative_rect=pygame.Rect(8, 36, self.layout.rect_bottom().width - 16, self.layout.bottom_h - 44),
+            relative_rect=pygame.Rect(8, 36, self.layout.rect_bottom_left().width - 16, self.layout.bottom_h - 44),
             manager=self.manager,
-            container=self.bottom_panel
+            container=self.log_panel
         )
+
+        # ---- bottom-right: project manager ----
+        self.pm_panel = UIPanel(self.layout.rect_bottom_right(), manager=self.manager)
+        UILabel(pygame.Rect(8, 8, 240, 24), "Projects", manager=self.manager, container=self.pm_panel)
+
+        self.pm_search = UITextEntryLine(
+            pygame.Rect(8, 36, self.layout.rect_bottom_right().width - 16, 28),
+            manager=self.manager,
+            container=self.pm_panel
+        )
+
+        self.pm_list = UISelectionList(
+            pygame.Rect(8, 70, self.layout.rect_bottom_right().width - 16, self.layout.bottom_h - 78),
+            item_list=[],
+            manager=self.manager,
+            container=self.pm_panel
+        )
+
+        self._pm_expanded_projects = set()
+        self._pm_expanded_goals = set()
+        self._pm_row_map = {}
+        self._last_pm_filter = ""
+
 
         # ---- center: map viewport (custom drawn) ----
         self.map_rect = self.layout.rect_center()
@@ -137,6 +178,44 @@ class UI:
             # Example future: selecting resource could filter tasks/recipes
             return
 
+    def _handle_pm_click(self, row_text: str) -> None:
+        meta = self._pm_row_map.get(row_text)
+        if not meta:
+            return
+
+        # Store selection via bus (separation of concerns)
+        self.bus.dispatch(Command("pm_select", {"key": meta["key"]}))
+
+        if meta["type"] == "task":
+            # Single-click toggles completion (pleasantly direct)
+            self.bus.dispatch(Command("pm_toggle_task", {
+                "project_id": meta["project_id"],
+                "goal_id": meta["goal_id"],
+                "task_id": meta["task_id"],
+            }))
+            # Refresh the tree to update checkmarks/completions
+            self.refresh_projects()
+
+    def _handle_pm_double_click(self, row_text: str) -> None:
+        meta = self._pm_row_map.get(row_text)
+        if not meta:
+            return
+
+        if meta["type"] == "project":
+            pid = meta["project_id"]
+            if pid in self._pm_expanded_projects:
+                self._pm_expanded_projects.remove(pid)
+            else:
+                self._pm_expanded_projects.add(pid)
+            self.refresh_projects()
+
+        elif meta["type"] == "goal":
+            gid = meta["goal_key"]  # composite key
+            if gid in self._pm_expanded_goals:
+                self._pm_expanded_goals.remove(gid)
+            else:
+                self._pm_expanded_goals.add(gid)
+            self.refresh_projects()
 
     # ---------- rendering ----------
     def draw_map(self) -> None:
@@ -261,6 +340,17 @@ class UI:
                         self._expanded_units.add(unit_id)
                     self.refresh_assets()
 
+        elif event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
+            if event.ui_element == self.pm_list:
+                self._handle_pm_click(event.text)
+
+        elif event.type == pygame_gui.UI_SELECTION_LIST_DOUBLE_CLICKED_SELECTION:
+            if event.ui_element == self.pm_list:
+                self._handle_pm_double_click(event.text)
+
+        elif event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
+            if event.ui_element == self.pm_search:
+                self.refresh_projects()
 
 
     def _apply_zoom(self, factor: float, pivot: Tuple[int, int]) -> None:
@@ -429,3 +519,90 @@ class UI:
         tail = self.state.events[-18:]
         html = "<br>".join([line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;") for line in tail])
         self.log_box.set_text(html)
+
+    def refresh_projects(self) -> None:
+        filt = self.pm_search.get_text().strip().lower()
+
+        rows = []
+        self._pm_row_map = {}
+
+        def checkbox(done: bool) -> str:
+            return "☑" if done else "☐"
+
+        for p in sorted(self.state.projects, key=lambda x: x.name.lower()):
+            # filter match for project or any descendants
+            project_matches = (not filt) or (filt in p.name.lower())
+
+            # compute descendant match
+            descendant_matches = False
+            if filt and not project_matches:
+                for g in p.goals:
+                    if filt in g.name.lower():
+                        descendant_matches = True
+                        break
+                    for t in g.tasks:
+                        if filt in t.name.lower():
+                            descendant_matches = True
+                            break
+                    if descendant_matches:
+                        break
+
+            if filt and not (project_matches or descendant_matches):
+                continue
+
+            tri = "▼" if p.id in self._pm_expanded_projects else "▶"
+            req = "R" if p.required else "O"
+            line_p = f"{tri} {checkbox(p.completed)} [{req}] {p.name}"
+            rows.append(line_p)
+            self._pm_row_map[line_p] = {
+                "type": "project",
+                "project_id": p.id,
+                "key": f"project:{p.id}"
+            }
+
+            if p.id not in self._pm_expanded_projects:
+                continue
+
+            for g in sorted(p.goals, key=lambda x: x.name.lower()):
+                goal_key = f"{p.id}/{g.id}"
+                goal_matches = (not filt) or (filt in g.name.lower())
+                if filt and not (project_matches or goal_matches):
+                    # only show matching tasks under this goal
+                    pass
+
+                tri_g = "▼" if goal_key in self._pm_expanded_goals else "▶"
+                req_g = "R" if g.required else "O"
+                line_g = f"    {tri_g} {checkbox(g.completed)} [{req_g}] {g.name}"
+                # show goal line if it matches filter, or any task matches filter
+                if filt and not (project_matches or goal_matches):
+                    any_task_match = any(filt in t.name.lower() for t in g.tasks)
+                    if not any_task_match:
+                        continue
+
+                rows.append(line_g)
+                self._pm_row_map[line_g] = {
+                    "type": "goal",
+                    "project_id": p.id,
+                    "goal_id": g.id,
+                    "goal_key": goal_key,
+                    "key": f"goal:{p.id}/{g.id}"
+                }
+
+                if goal_key not in self._pm_expanded_goals:
+                    continue
+
+                for t in sorted(g.tasks, key=lambda x: x.name.lower()):
+                    if filt and not (project_matches or goal_matches or (filt in t.name.lower())):
+                        continue
+                    req_t = "R" if t.required else "O"
+                    line_t = f"        {checkbox(t.completed)} [{req_t}] {t.name}"
+                    rows.append(line_t)
+                    self._pm_row_map[line_t] = {
+                        "type": "task",
+                        "project_id": p.id,
+                        "goal_id": g.id,
+                        "task_id": t.id,
+                        "key": f"task:{p.id}/{g.id}/{t.id}"
+                    }
+
+        self.pm_list.set_item_list(rows)

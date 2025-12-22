@@ -7,6 +7,8 @@ from model import Simulation
 from config_loaders import load_resources, load_recipes, load_units
 from commands import CommandBus, install_default_handlers, Command
 from ui import UI, Layout
+from tasks_loader import load_tasks, install_tasks_into_state
+from project_manager import ProjectManager, install_project_manager_handlers
 
 
 def main() -> int:
@@ -18,9 +20,17 @@ def main() -> int:
 
     manager = pygame_gui.UIManager(layout.screen_size)
 
+    # create game state from config
     catalog = load_resources("data/resources.json")
     recipes = load_recipes("data/recipes.json", catalog)
     state = load_units("data/units.json", recipes, catalog)
+
+    # after state is created
+    projects = load_tasks("data/tasks.json")
+    install_tasks_into_state(state, projects)
+
+    pm = ProjectManager(state)
+    install_project_manager_handlers(bus, pm)
 
     sim = Simulation(state)
 
