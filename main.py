@@ -4,7 +4,7 @@ import pygame
 import pygame_gui
 
 from model import make_demo_state, Simulation
-from commands import CommandBus, install_default_handlers
+from commands import CommandBus, install_default_handlers, Command
 from ui import UI, Layout
 
 
@@ -28,10 +28,10 @@ def main() -> int:
     clock = pygame.time.Clock()
     running = True
 
-    # simulation tick rate (separate from FPS)
-    sim_accum = 0.0
-    sim_hz = 10.0   # 10 ticks/sec is plenty for a management sim starter
-    sim_dt = 1.0 / sim_hz
+    # turn rate (turns per second)
+    turn_accum = 0.0
+    turns_per_sec = 2.0
+    turn_dt = 1.0 / turns_per_sec
 
     while running:
         dt_s = clock.tick(60) / 1000.0
@@ -48,7 +48,7 @@ def main() -> int:
                     running = False
                     break
                 if event.key == pygame.K_SPACE:
-                    bus.dispatch(("toggle_pause"))  # intentionally wrong to prove bus logging
+                    bus.dispatch(Command("toggle_pause", {}))
 
             ui.process_event(event)
 
@@ -57,9 +57,10 @@ def main() -> int:
         # bus.dispatch(Command("toggle_pause", {}))
 
         # Run simulation ticks
-        while sim_accum >= sim_dt:
-            sim.tick(sim_dt)
-            sim_accum -= sim_dt
+        turn_accum += dt_s
+        while turn_accum >= turn_dt:
+            sim.tick_turn()
+            turn_accum -= turn_dt
 
         # Draw
         screen.fill((0, 0, 0))

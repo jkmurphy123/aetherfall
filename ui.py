@@ -62,7 +62,7 @@ class UI:
 
         # ---- left: assets ----
         self.left_panel = UIPanel(self.layout.rect_left(), manager=self.manager)
-        UILabel(pygame.Rect(8, 8, 220, 24), "Assets", manager=self.manager, container=self.left_panel)
+        UILabel(pygame.Rect(8, 8, 220, 24), "Assets (Global)", manager=self.manager, container=self.left_panel)
         self.asset_search = UITextEntryLine(pygame.Rect(8, 36, self.layout.left_w - 16, 28), manager=self.manager, container=self.left_panel)
         self.asset_list = UISelectionList(
             pygame.Rect(8, 70, self.layout.left_w - 16, self.layout.rect_left().height - 78),
@@ -126,30 +126,38 @@ class UI:
             local = (p - self._camera) * self._zoom
             return pygame.Vector2(self.map_rect.topleft) + local
 
-        # factories as circles + labels
+        # units as circles + labels
         font = pygame.font.Font(None, 20)
-        selected_id = self.state.selected_factory_id
+        # inside draw_map()
 
-        for fac in self.state.factories:
-            wp = pygame.Vector2(fac.pos)
+        selected_id = self.state.selected_unit_id
+
+        for u in self.state.units.values():
+            wp = pygame.Vector2(u.pos)
             sp = world_to_screen(wp)
-
-            # cull if outside map rect
             if not self.map_rect.collidepoint(int(sp.x), int(sp.y)):
                 continue
 
-            is_sel = (fac.id == selected_id)
-            color = (120, 220, 180) if fac.status == "Running" else (220, 160, 80)
-            if fac.status == "Paused":
-                color = (150, 150, 160)
+            is_sel = (u.id == selected_id)
+
+            # simple color coding by kind
+            if u.kind == "Drone":
+                color = (140, 200, 255)
+            elif u.kind == "ResourcePile":
+                color = (180, 230, 160)
+            elif u.kind == "Factory":
+                color = (230, 180, 120)
+            else:
+                color = (200, 200, 210)
 
             r = 10 if not is_sel else 14
             pygame.draw.circle(self.screen, color, (int(sp.x), int(sp.y)), r)
             if is_sel:
                 pygame.draw.circle(self.screen, (240, 240, 255), (int(sp.x), int(sp.y)), r + 3, 2)
 
-            label = font.render(fac.name, True, (220, 220, 235))
+            label = font.render(u.name, True, (220, 220, 235))
             self.screen.blit(label, (sp.x + r + 6, sp.y - 10))
+
 
         # map HUD (zoom)
         hud = font.render(f"Zoom: {self._zoom:.2f}  |  Pan: {int(self._camera.x)}, {int(self._camera.y)}", True, (200, 200, 215))
@@ -169,11 +177,11 @@ class UI:
 
             elif event.button == 1 and self.map_rect.collidepoint(event.pos):
                 # left click: select nearest factory
-                fac = self.pick_factory_at_screen(event.pos)
-                if fac:
-                    self.bus.dispatch(Command("select_factory", {"factory_id": fac.id}))
+                unit = self.pick_unit_at_screen(event.pos)
+                if unit:
+                    self.bus.dispatch(Command("select_unit", {"unit_id": unit.id}))
                 else:
-                    self.bus.dispatch(Command("select_factory", {"factory_id": None}))
+                    self.bus.dispatch(Command("select_unit", {"unit_id": None}))
 
             elif event.button in (4, 5) and self.map_rect.collidepoint(event.pos):
                 # mouse wheel up/down (some systems)
@@ -224,22 +232,20 @@ class UI:
         # world point under cursor after zoom should remain the same:
         self._camera = world_before - (pivot_local / new_zoom)
 
-    def pick_factory_at_screen(self, pos: Tuple[int, int]) -> Optional[Factory]:
-        # convert screen pos -> world pos
+    def pick_unit_at_screen(self, pos):
         p = pygame.Vector2(pos)
         local = p - pygame.Vector2(self.map_rect.topleft)
         world = self._camera + (local / max(self._zoom, 0.001))
 
         best = None
         best_d2 = 999999.0
-        for fac in self.state.factories:
-            fp = pygame.Vector2(fac.pos)
-            d2 = (fp - world).length_squared()
+        for u in self.state.units.values():
+            up = pygame.Vector2(u.pos)
+            d2 = (up - world).length_squared()
             if d2 < best_d2:
                 best_d2 = d2
-                best = fac
+                best = u
 
-        # selection radius in world units (tweakable)
         if best and best_d2 <= (22.0 ** 2):
             return best
         return None
@@ -270,41 +276,64 @@ class UI:
 
     def refresh_status(self) -> None:
         paused = "PAUSED" if self.state.paused else "RUNNING"
-        sel = self.state.get_selected_factory()
+        sel = self.state.get_selected_unit()
         sel_txt = sel.name if sel else "None"
-        self.lbl_status.set_text(f"Sim: {paused}   |   Selected: {sel_txt}")
+        self.lbl_status.set_text(f"Sim: {paused}  |  Turn: {self.state.sim_turn}  |  Selected: {sel_txt}")
 
     def refresh_assets(self) -> None:
         filt = self.asset_search.get_text().strip().lower()
-        items: List[str] = []
-        for name, qty in sorted(self.state.assets.items(), key=lambda kv: kv[0].lower()):
+
+        summary = self.state.all_inventories_summary()
+        items = []
+        for name, qty in sorted(summary.items(), key=lambda kv: kv[0].lower()):
             if filt and filt not in name.lower():
                 continue
             items.append(f"{name}  [{qty}]")
 
-        # pygame_gui selection list needs a full reset
         self.asset_list.set_item_list(items)
 
     def refresh_inspector(self) -> None:
-        fac = self.state.get_selected_factory()
-        if not fac:
-            self.inspect_box.set_text("Select a factory on the map to inspect it.")
+        u = self.state.get_selected_unit()
+        if not u:
+            self.inspect_box.set_text("Select a unit on the map to inspect it.")
             return
 
-        def fmt_rates(d: Dict[str, float]) -> str:
-            if not d:
+        def fmt_inv(inv):
+            if not inv:
                 return "None"
-            return "<br>".join([f"{k}: {v:.1f}/min" for k, v in d.items()])
+            return "<br>".join([f"{k}: {v}" for k, v in sorted(inv.items())])
+
+        def fmt_link(unit_id):
+            if not unit_id:
+                return "None"
+            x = self.state.get_unit(unit_id)
+            return x.name if x else unit_id
+
+        recipe_txt = "None"
+        if u.recipe:
+            r = u.recipe
+            parts = [f"<b>{r.name}</b>", f"Duration: {r.duration_turns} turn(s)"]
+            if r.transfer_resource:
+                parts.append(f"Transfer resource: {r.transfer_resource}")
+            if r.inputs:
+                parts.append("<br><b>Inputs</b><br>" + "<br>".join([f"{k}: {v}" for k, v in r.inputs.items()]))
+            if r.outputs:
+                parts.append("<br><b>Outputs</b><br>" + "<br>".join([f"{k}: {v}" for k, v in r.outputs.items()]))
+            recipe_txt = "<br>".join(parts)
 
         html = (
-            f"<b>{fac.name}</b><br>"
-            f"Type: {fac.kind}<br>"
-            f"Status: {fac.status}<br><br>"
-            f"<b>Producing</b><br>{fmt_rates(fac.producing)}<br><br>"
-            f"<b>Consuming</b><br>{fmt_rates(fac.consuming)}<br><br>"
-            f"{('<i>' + fac.notes + '</i>') if fac.notes else ''}"
+            f"<b>{u.name}</b><br>"
+            f"Kind: {u.kind}<br>"
+            f"Status: {u.status}<br><br>"
+            f"<b>Links</b><br>"
+            f"Input: {fmt_link(u.input_id)}<br>"
+            f"Output: {fmt_link(u.output_id)}<br><br>"
+            f"<b>Inventory</b><br>{fmt_inv(u.inventory)}<br><br>"
+            f"{recipe_txt}<br><br>"
+            f"{('<i>' + u.notes + '</i>') if u.notes else ''}"
         )
         self.inspect_box.set_text(html)
+
 
     def refresh_log(self) -> None:
         # show last N lines
