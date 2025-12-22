@@ -6,7 +6,7 @@ import pygame
 import pygame_gui
 from pygame_gui.elements import UIPanel, UIButton, UILabel, UITextEntryLine, UISelectionList, UITextBox
 
-from model import GameState, Factory
+from model import GameState, ProcessingUnit
 from commands import CommandBus, Command
 
 
