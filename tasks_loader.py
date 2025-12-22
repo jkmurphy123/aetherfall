@@ -35,6 +35,8 @@ def load_tasks(path: str) -> List[Project]:
 
             proj.goals.append(goal)
 
+        print(f"Loaded goals: '{proj.goals}'")
+
         projects.append(proj)
 
     return projects
