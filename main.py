@@ -3,7 +3,7 @@ import sys
 import pygame
 import pygame_gui
 
-from model import make_demo_state, Simulation
+from model import Simulation
 from config_loaders import load_resources, load_recipes, load_units
 from commands import CommandBus, install_default_handlers, Command
 from ui import UI, Layout
