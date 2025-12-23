@@ -1,0 +1,38 @@
+{
+    "version": 1,
+    "id": "argonaut_surface",
+    "name": "Argonaut Surface",
+    "description": "Wind-scoured flats with basalt ridges.",
+    "image_path": "images/maps/argonaut_station_lv1.png",
+    "grid": {
+        "width": 64,
+        "height": 32,
+        "tile_world_size": 32
+    },
+    "terrain_palette": {
+        "0": {
+            "name": "Sand",
+            "passable": true,
+            "cost": 1.0
+        },
+        "1": {
+            "name": "Rock",
+            "passable": true,
+            "cost": 1.5
+        },
+        "2": {
+            "name": "Cliff",
+            "passable": false,
+            "cost": 999.0
+        }
+    },
+    "tiles": {
+        "encoding": "rle",
+        "data": [
+            [
+                0,
+                2048
+            ]
+        ]
+    }
+}

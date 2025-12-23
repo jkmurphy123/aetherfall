@@ -63,13 +63,16 @@ class Layout:
 
 class UI:
     def __init__(self, screen: pygame.Surface, manager: pygame_gui.UIManager, layout: Layout,
-                 state: GameState, bus: CommandBus, resources):
+                 state: GameState, bus: CommandBus, resources, map_state):
         self.screen = screen
         self.manager = manager
         self.layout = layout
         self.state = state
         self.bus = bus
         self.resources = resources
+
+        self.map_state = map_state
+        self.map_state.map_image = pygame.image.load(self.map_state.map_def.image_path).convert()
 
         # ---- menu bar ----
         self.menu_panel = UIPanel(relative_rect=self.layout.rect_menu(), manager=self.manager)
@@ -219,27 +222,69 @@ class UI:
 
     # ---------- rendering ----------
     def draw_map(self) -> None:
-        # background
+        # panel background
         pygame.draw.rect(self.screen, (8, 8, 10), self.map_rect)
         pygame.draw.rect(self.screen, (40, 40, 50), self.map_rect, 1)
 
-        # subtle grid
-        grid_step = 80
-        for x in range(self.map_rect.left, self.map_rect.right, grid_step):
-            pygame.draw.line(self.screen, (18, 18, 24), (x, self.map_rect.top), (x, self.map_rect.bottom))
-        for y in range(self.map_rect.top, self.map_rect.bottom, grid_step):
-            pygame.draw.line(self.screen, (18, 18, 24), (self.map_rect.left, y), (self.map_rect.right, y))
+        m = self.map_state.map_def
+        img = self.map_state.map_image
 
-        # world -> screen transform helpers
+        # world -> screen
         def world_to_screen(p: pygame.Vector2) -> pygame.Vector2:
-            # map rect local coordinates:
             local = (p - self._camera) * self._zoom
             return pygame.Vector2(self.map_rect.topleft) + local
 
-        # units as circles + labels
-        font = pygame.font.Font(None, 20)
-        # inside draw_map()
+        # ----- draw bitmap background -----
+        world_w, world_h = m.world_size  # in world units
+        map_top_left_screen = world_to_screen(pygame.Vector2(0, 0))
 
+        # Scale bitmap to match world size * zoom
+        # Assumption: bitmap represents entire map area.
+        scaled_w = max(1, int(world_w * self._zoom))
+        scaled_h = max(1, int(world_h * self._zoom))
+
+        # Scaling each frame is OK to start; later we can cache by zoom step
+        bg_scaled = pygame.transform.smoothscale(img, (scaled_w, scaled_h))
+        self.screen.blit(bg_scaled, (map_top_left_screen.x, map_top_left_screen.y))
+
+        # ----- fog of war overlay (draw only visible tiles) -----
+        tile = m.tile_world_size
+        # viewport in world coords
+        viewport_w = self.map_rect.width
+        viewport_h = self.map_rect.height
+        world_tl = self._camera
+        world_br = self._camera + pygame.Vector2(viewport_w / max(self._zoom, 0.001),
+                                                viewport_h / max(self._zoom, 0.001))
+
+        tx0 = max(0, int(world_tl.x // tile))
+        ty0 = max(0, int(world_tl.y // tile))
+        tx1 = min(m.width - 1, int(world_br.x // tile) + 1)
+        ty1 = min(m.height - 1, int(world_br.y // tile) + 1)
+
+        fog_color = (0, 0, 0)
+
+        for ty in range(ty0, ty1 + 1):
+            for tx in range(tx0, tx1 + 1):
+                if self.map_state.is_explored(tx, ty):
+                    continue
+
+                # tile rect in world coords
+                wx = tx * tile
+                wy = ty * tile
+                # convert to screen rect
+                screen_pos = world_to_screen(pygame.Vector2(wx, wy))
+                rect = pygame.Rect(
+                    int(screen_pos.x),
+                    int(screen_pos.y),
+                    max(1, int(tile * self._zoom)),
+                    max(1, int(tile * self._zoom))
+                )
+                # Clip to map panel so fog doesn't spill
+                if rect.colliderect(self.map_rect):
+                    pygame.draw.rect(self.screen, fog_color, rect)
+
+        # ----- draw units on top -----
+        font = pygame.font.Font(None, 20)
         selected_id = self.state.selected_unit_id
 
         for u in self.state.units.values():
@@ -249,8 +294,6 @@ class UI:
                 continue
 
             is_sel = (u.id == selected_id)
-
-            # simple color coding by kind
             if u.kind == "Drone":
                 color = (140, 200, 255)
             elif u.kind == "ResourcePile":
@@ -268,10 +311,9 @@ class UI:
             label = font.render(u.name, True, (220, 220, 235))
             self.screen.blit(label, (sp.x + r + 6, sp.y - 10))
 
-
-        # map HUD (zoom)
-        hud = font.render(f"Zoom: {self._zoom:.2f}  |  Pan: {int(self._camera.x)}, {int(self._camera.y)}", True, (200, 200, 215))
+        hud = font.render(f"Zoom: {self._zoom:.2f}  |  Cam: {int(self._camera.x)}, {int(self._camera.y)}", True, (200, 200, 215))
         self.screen.blit(hud, (self.map_rect.left + 10, self.map_rect.top + 10))
+
 
     # ---------- input handling ----------
     def process_event(self, event: pygame.event.Event) -> None:

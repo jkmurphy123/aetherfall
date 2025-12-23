@@ -11,6 +11,7 @@ from ui import UI, Layout
 from config_loaders import load_resources, load_recipes, load_units
 from tasks_loader import load_tasks, install_tasks_into_state
 from project_manager import ProjectManager, install_project_manager_handlers
+from map_loader import load_map_state
 
 
 def main() -> int:
@@ -22,6 +23,11 @@ def main() -> int:
     layout = Layout(screen_size=(1280, 720))
     screen = pygame.display.set_mode(layout.screen_size)
     pygame.display.set_caption("Aetherfall — Logistics Console")
+
+    map_state = load_map_state(
+        map_def_path="data/maps/argonaut_surface.json",
+        save_slot_path="data/saves/save_slot_01.json"
+    )
 
     manager = pygame_gui.UIManager(layout.screen_size, "data/theme.json")
 
@@ -66,7 +72,8 @@ def main() -> int:
         layout=layout,
         state=state,
         bus=bus,
-        resources=resources
+        resources=resources, 
+        map_state=map_state
     )
 
     # ------------------------------------------------------------
@@ -102,6 +109,20 @@ def main() -> int:
                 # optional hot reload later
                 # if event.key == pygame.K_r:
                 #     reload configs
+
+                mods = pygame.key.get_mods()
+
+                if event.key == pygame.K_e:
+                    map_state.reveal_all()
+                    state.log("DEBUG: Reveal all tiles.")
+
+                if event.key == pygame.K_h:
+                    map_state.hide_all()
+                    state.log("DEBUG: Hide all tiles.")
+
+                if event.key == pygame.K_s and (mods & pygame.KMOD_CTRL):
+                    map_state.save_to_disk()
+                    state.log("Saved exploration to slot.")                
 
             ui.process_event(event)
 

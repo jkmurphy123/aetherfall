@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "map_id": "argonaut_surface",
+    "exploration": {
+        "encoding": "rle",
+        "data": [
+            [
+                0,
+                2048
+            ]
+        ]
+    }
+}
