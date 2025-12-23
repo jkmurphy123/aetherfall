@@ -1,13 +1,25 @@
 {
-    "version": 1,
-    "fonts": {
-        "default": {
+    "defaults": {
+        "font": {
             "name": "dejavu",
             "point_size": 14,
-            "path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+            "regular_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        },
+        "colours": {
+            "normal_bg": "#1b1f26",
+            "hovered_bg": "#232a33",
+            "disabled_bg": "#14181d",
+            "selected_bg": "#2b4a73",
+            "dark_bg": "#0b0f14",
+            "normal_text": "#cfd6e4",
+            "hovered_text": "#ffffff",
+            "selected_text": "#ffffff",
+            "disabled_text": "#6d736f",
+            "normal_border": "#444a55",
+            "hovered_border": "#646b78",
+            "disabled_border": "#2a2f38",
+            "selected_border": "#8080b0",
+            "active_border": "#8080b0"
         }
-    },
-    "colours": {
-        "dark_bg": "#0b0f14"
     }
 }
